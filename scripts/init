@@ -1,0 +1,99 @@
+#!/usr/bin/env python3
+"""Render skill defaults and initialise project resources without overwriting them."""
+
+import argparse
+import json
+import re
+from pathlib import Path
+
+REPO = Path(__file__).resolve().parent.parent
+TOKEN = re.compile(r"\{\{([a-zA-Z_][a-zA-Z0-9_]*)\}\}")
+
+
+def render(text, values):
+    def replace(match):
+        key = match.group(1)
+        if key not in values:
+            raise ValueError(f"Unknown template variable: {key}")
+        return values[key]
+
+    return TOKEN.sub(replace, text)
+
+
+def initialise(args):
+    values = json.loads((REPO / "config/defaults.json.example").read_text())
+    local_config = REPO / "config/defaults.json"
+    configs = [local_config] if local_config.exists() else []
+    if args.config:
+        configs.append(args.config)
+    for config in configs:
+        overrides = json.loads(config.read_text())
+        if not isinstance(overrides, dict):
+            raise ValueError("Config must be a JSON object")
+        unknown = overrides.keys() - values.keys()
+        if unknown:
+            raise ValueError(f"Unknown config keys: {', '.join(sorted(unknown))}")
+        values.update(overrides)
+    values["project_name"] = args.project_dir.resolve().name
+    for key, value in values.items():
+        if not isinstance(value, str) or not value.strip():
+            raise ValueError(f"Config value {key!r} must be a non-empty string")
+    # Validate and render all inputs before writing any output.
+    output = args.output_dir.resolve()
+    sources = REPO / "skills"
+    if output.is_relative_to(sources) or sources.is_relative_to(output):
+        raise ValueError("Output directory must be separate from the source skills")
+    skill_files, directories, project_files = [], [], []
+    for skill in sorted(sources.iterdir()):
+        if not skill.is_dir() or not (skill / "SKILL.md").is_file():
+            continue
+        for source in sorted(skill.rglob("*")):
+            if not source.is_file():
+                continue
+            destination = output / source.relative_to(sources)
+            data = source.read_bytes()
+            if source.name == "SKILL.md":
+                data = render(data.decode(), values).encode()
+            skill_files.append((destination, data))
+        manifest_path = skill / "init.json"
+        if args.skills_only or not manifest_path.exists():
+            continue
+        manifest = json.loads(manifest_path.read_text())
+        for directory in manifest.get("directories", []):
+            directories.append(args.project_dir / render(directory, values))
+        for entry in manifest.get("files", []):
+            template = skill / entry["template"]
+            destination = args.project_dir / render(entry["path"], values)
+            project_files.append((destination, render(template.read_text(), values)))
+
+    for destination, data in skill_files:
+        destination.parent.mkdir(parents=True, exist_ok=True)
+        destination.write_bytes(data)
+    print(f"Rendered skills in {output}")
+    for directory in directories:
+        directory.mkdir(parents=True, exist_ok=True)
+    for destination, content in project_files:
+        destination.parent.mkdir(parents=True, exist_ok=True)
+        try:
+            with destination.open("x") as file:
+                file.write(content)
+            print(f"Created {destination}")
+        except FileExistsError:
+            print(f"Kept existing {destination}")
+
+
+def main():
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument("--config", type=Path, help="JSON overrides for config/defaults.json")
+    parser.add_argument("--project-dir", type=Path, default=Path.cwd())
+    parser.add_argument("--output-dir", type=Path, default=REPO / ".generated/skills")
+    parser.add_argument("--skills-only", action="store_true", help="Render without creating project resources")
+    args = parser.parse_args()
+    try:
+        initialise(args)
+    except (OSError, ValueError, KeyError, TypeError) as error:
+        parser.exit(1, f"init: {error}\n")
+
+
+if __name__ == "__main__":
+    main()

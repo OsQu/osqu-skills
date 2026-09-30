@@ -3,8 +3,12 @@ set -eu
 
 skill_name="one-by-one"
 script_dir=$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)
-source_dir="$script_dir/../skills/$skill_name"
+source_dir="$script_dir/../.generated/skills/$skill_name"
 target_dir="$HOME/.codex/skills/$skill_name"
+
+if [ ! -f "$source_dir/SKILL.md" ]; then
+  "$script_dir/init" --skills-only
+fi
 
 if [ ! -f "$source_dir/SKILL.md" ]; then
   printf 'Missing canonical skill: %s\n' "$source_dir" >&2

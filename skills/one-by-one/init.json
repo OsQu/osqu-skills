@@ -1,0 +1,9 @@
+{
+  "directories": ["{{tasklog_dir}}", "{{planning_doc_dir}}"],
+  "files": [
+    {
+      "path": "{{tasklog_dir}}/{{project_name}}-TASKLOG.md",
+      "template": "assets/tasklog.md.tmpl"
+    }
+  ]
+}

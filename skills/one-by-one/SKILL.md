@@ -12,7 +12,8 @@ Use this workflow when the user wants to review each discrete change before the 
 1. Explore the relevant code and constraints before proposing implementation work.
 2. Ask a concise question when a material decision cannot be safely inferred. Do not begin mutations that depend on the answer.
 3. Break the request into independently reviewable tasks. State the current task, its expected outcome, and its verification command before changing files.
-4. Create or update `docs/PROJECT_NAME-TASKLOG.md` before implementation, replacing `PROJECT_NAME` with the project's name so each project has its own log. Reuse the same filename when resuming that project. Record the planned tasks and mark the current task as in progress.
+4. Create or update `{{tasklog_dir}}/PROJECT_NAME-TASKLOG.md` before implementation, replacing `PROJECT_NAME` with the project's name so each project has its own log. Reuse the same filename when resuming that project. Record the planned tasks and mark the current task as in progress.
+5. Use `{{planning_doc_dir}}` for new planning documents when needed, unless the project or user specifies another location. Reuse existing planning documents in their established locations.
 
 ## Per-task loop
 
