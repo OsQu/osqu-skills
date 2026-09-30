@@ -1,0 +1,4 @@
+interface:
+  display_name: "One by One"
+  short_description: "Implement in verified, user-gated increments"
+  default_prompt: "Use $one-by-one to handle this task in user-verified increments."

@@ -1,0 +1,33 @@
+#!/bin/sh
+set -eu
+
+skill_name="one-by-one"
+script_dir=$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)
+source_dir="$script_dir/../skills/$skill_name"
+target_dir="$HOME/.codex/skills/$skill_name"
+
+if [ ! -f "$source_dir/SKILL.md" ]; then
+  printf 'Missing canonical skill: %s\n' "$source_dir" >&2
+  exit 1
+fi
+
+if [ -L "$target_dir" ] && [ "$(readlink "$target_dir")" = "$source_dir" ]; then
+  printf 'Codex already uses %s\n' "$source_dir"
+  exit 0
+fi
+
+if [ -e "$target_dir" ] || [ -L "$target_dir" ]; then
+  if [ "${1:-}" != "--replace-existing" ]; then
+    printf 'Refusing to replace existing skill: %s\n' "$target_dir" >&2
+    printf 'Re-run with --replace-existing to back it up and install this source.\n' >&2
+    exit 1
+  fi
+
+  backup_dir="$target_dir.backup-$(date +%Y%m%d%H%M%S)"
+  mv "$target_dir" "$backup_dir"
+  printf 'Backed up existing skill to %s\n' "$backup_dir"
+fi
+
+mkdir -p "$(dirname "$target_dir")"
+ln -s "$source_dir" "$target_dir"
+printf 'Installed %s for Codex.\n' "$skill_name"
